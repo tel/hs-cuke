@@ -2,7 +2,7 @@ name:                cuke
 version:             0.1.0.0
 synopsis:            Cucumber Wire Protocol handler
 description:         Cucumber Wire Protocol handler
-homepage:            http://github.com/tel/cuke
+homepage:            http://github.com/tel/hs-cuke
 license:             MIT
 license-file:        LICENSE
 author:              Joseph Abrahamson
@@ -11,6 +11,10 @@ copyright:           Copyright (c) 2014 Joseph Abrahamson
 category:            Testing
 build-type:          Simple
 cabal-version:       >=1.10
+
+source-repository head
+  type: git
+  location: git://github.com/tel/hs-cuke.git
 
 library
   exposed-modules:
