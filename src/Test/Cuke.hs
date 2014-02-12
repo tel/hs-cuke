@@ -13,32 +13,29 @@ import qualified Data.Attoparsec            as Atto
 import qualified Data.ByteString            as S
 import qualified Data.ByteString.Lazy       as Sl
 import qualified Data.Text                  as T
-import qualified Data.Vector                as V
 import           Pipes
 import qualified Pipes.Attoparsec           as Pa
 import           Pipes.Network.TCP
 import qualified Pipes.Prelude              as P
-import qualified Pipes.Prelude              as P
-import           Data.String
 
 fastMain :: Int -> IO ()
 fastMain n = void $ Async.race (Conc.threadDelay (n * 1000000)) main
 
 main :: IO ()
 main = serve (Host "localhost") "3901" $ \(sock, addr) -> do
-  runEffect (fromSocket sock 4096 >-> trans >-> toSocket sock)
+  res <- runEffect ( Pa.parsed Ae.json' (fromSocket sock 4096)
+                     >-> trans
+                     >-> toSocket sock
+                   )
+  case res of
+    Right r            -> return r
+    Left (pe, _resume) -> print pe
 
-trans :: Pipe S.ByteString S.ByteString IO ()
-trans = do
-  err <- parsePipe Ae.json'
-         >-> decodePipe
-         >-> dropLeft
-         >-> handle
-         >-> P.map (Sl.toStrict . Ae.encode)
-  liftIO (print err)
-
--- instance IsString Ae.Value where
---   fromString s = Ae.String (fromString s)
+trans :: Pipe Ae.Value S.ByteString IO r
+trans = 
+  decodePipe >-> dropLeft
+  >-> handle
+  >-> P.map (Sl.toStrict . Ae.encode)
 
 data WireMessage
   = StepMatches T.Text
@@ -114,13 +111,6 @@ data FailureMsg
         
 handle :: Monad m => Pipe Ae.Value Ae.Value m r
 handle = cat
-
-parsePipe :: Monad m => Atto.Parser a -> Pipe S.ByteString a m String
-parsePipe pa = go (Atto.parse pa) where
-  go     f                         = await >>= handle . f
-  handle (Atto.Done lf a)          = yield a >> handle (Atto.parse pa lf)
-  handle (Atto.Partial f)          = go f
-  handle (Atto.Fail _lf _ctxs err) = return err
 
 decodePipe
   :: (Monad m, Ae.FromJSON a)
