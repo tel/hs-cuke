@@ -24,9 +24,12 @@ library
                      , async
                      , attoparsec
                      , bytestring
+                     , lens-family-core
                      , mtl
+                     , mmorph
                      , pipes             >= 4.1
-                     , pipes-attoparsec  >= 0.4
+                     , pipes-group
+                     , pipes-bytestring
                      , pipes-network
                      , regex-pcre
                      , text
