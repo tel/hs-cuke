@@ -10,7 +10,7 @@ import qualified Data.Text           as T
 
 data WireMessage
   = StepQuery T.Text
-  | Invoke T.Text [Ae.Value]
+  | Invoke T.Text [T.Text]
   | BeginScenario [T.Text]
   | EndScenario [T.Text]
   | DiffFailed
@@ -58,17 +58,26 @@ data WireResponse
   | InvocationResponse InvocationResponse
   | StructuralResponse StructuralResponse
   | SnippetResponse    ProvideSnippet
+  deriving ( Eq, Show )
 
 data MatchResponse
-  = StepMatches [StepArg]
+  = StepMatches [StepDetail]
   | StepDoesNotMatch
+  deriving ( Eq, Show )
+
+data StepDetail
+  = StepDetail { identifier :: T.Text
+               , arguments  :: [StepArg]
+               , stepSource :: Maybe T.Text
+               , stepRegexp :: Maybe T.Text
+               }
+  deriving ( Eq, Show )
 
 data StepArg
-  = StepArg { identifier :: T.Text
-            , arguments  :: [Ae.Value]
-            , stepSource :: Maybe T.Text
-            , stepRegexp :: Maybe T.Text
+  = StepArg { value    :: T.Text
+            , position :: Int
             }
+  deriving ( Eq, Show )
 
 data InvocationResponse
   = InvocationPending   { reason :: T.Text }
@@ -80,13 +89,16 @@ data InvocationResponse
                         , diffTable   :: DiffTable
                         }
   | InvocationFailed FailureMsg
+  deriving ( Eq, Show )
 
 data StructuralResponse
   = ConfirmScenario
   | ConfirmScenarioEnd
+  deriving ( Eq, Show )
 
 data ProvideSnippet =
-  ProvideSnipet { snippet :: T.Text }
+  ProvideSnippet { snippet :: T.Text }
+  deriving ( Eq, Show )
 
 data DiffTable = DiffTable
   deriving ( Eq, Show )
@@ -119,11 +131,17 @@ diff_    = Ae.String "diff"
 diffi_   = Ae.String "diff!"
 
 instance Ae.ToJSON StepArg where
-  toJSON sa = objectM
-    [ Just ("id"     .=  identifier sa)
-    , Just ("args"   .=  arguments  sa)
-    ,       "source" .=? stepSource sa
-    ,       "regexp" .=? stepRegexp sa
+  toJSON sa = Ae.object
+    [ "val" .= value    sa
+    , "pos" .= position sa
+    ]
+
+instance Ae.ToJSON StepDetail where
+  toJSON sd = objectM
+    [ Just ("id"     .=  identifier sd)
+    , Just ("args"   .=  arguments  sd)
+    ,       "source" .=? stepSource sd
+    ,       "regexp" .=? stepRegexp sd
     ]
 
 instance Ae.ToJSON MatchResponse where

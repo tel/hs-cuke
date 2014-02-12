@@ -19,6 +19,7 @@ import           Lens.Family
 import           Pipes
 import qualified Pipes.ByteString           as Ps
 import           Pipes.Core
+import           Pipes.Lift
 import           Pipes.Group
 import           Pipes.Network.TCP
 import qualified Pipes.Prelude              as P
@@ -55,20 +56,19 @@ midIO = hoist (return . runIdentity) mid
 mid :: Pipe WireMessage WireResponse Identity r
 mid = P.map go where
   go :: WireMessage -> WireResponse
-  go = undefined
-  -- go (StepQuery step)    = Success (Just [SuccessArg "1" [] Nothing Nothing])
-  -- go (Invoke id args)    = Failure (Just $ FailureMsg (Just "1") ["2", "3", "4"] ["line 1", "line 2"])
-  -- go (BeginScenario _)   = Success Nothing
-  -- go (EndScenario _)     = Success Nothing
-  -- go (SnippetText _ _ _) = SuccessSnippet "whatever"
+  go (StepQuery step)    = MatchResponse      (StepMatches [StepDetail step [StepArg "hello" 0] Nothing Nothing])
+  go (Invoke id args)    = InvocationResponse InvocationSucceeded 
+  go (BeginScenario _)   = StructuralResponse ConfirmScenario
+  go (EndScenario _)     = StructuralResponse ConfirmScenarioEnd
+  go (SnippetText _ _ _) = SnippetResponse    (ProvideSnippet "whatever")
 
 middle :: Pipe (Either String WireMessage) WireResponse IO ()
-middle = dropLeft >-> midIO where
-  dropLeft = forever $ do
+middle = dieLeft >-> midIO >-> P.chain (\a -> putStr "< " >> print (Ae.encode a)) where
+  dieLeft = do
     ei <- await
     case ei of
-      Left  _ -> return ()
-      Right a -> yield a
+      Left  e -> lift (putStrLn e) >> return ()
+      Right a -> lift (putStr "> " >> print a) >> yield a >> dieLeft
 
 main :: IO ()
 main = serve (Host "localhost") "3901" $ \(sock, addr) ->
